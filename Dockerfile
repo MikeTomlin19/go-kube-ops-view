@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Multi-stage Dockerfile for Go kube-ops-view application
 # Stage 1: Build frontend assets
 FROM node:26-alpine AS frontend-builder
@@ -7,7 +8,8 @@ RUN mkdir -p /assets/static
 
 # Copy package files
 COPY app/package*.json ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 
 # Copy frontend source
 COPY app/ ./
@@ -25,7 +27,8 @@ WORKDIR /src
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source code
 COPY . .
@@ -34,14 +37,17 @@ COPY . .
 COPY --from=frontend-builder /assets/static/build ./assets/static/build/
 
 # Build arguments for version information
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG DATE=unknown
 
 # Build the Go binary with optimizations
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -ldflags="-w -s -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
-    -a -installsuffix cgo \
     -o kube-ops-view \
     ./main.go
 

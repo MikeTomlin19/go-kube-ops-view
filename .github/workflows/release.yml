@@ -1,0 +1,120 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer version to publish, for example v1.2.3
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: miketomlin19/go-kube-ops-view
+
+jobs:
+  image:
+    name: Build, publish, scan, and sign image
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v6
+
+    - name: Validate manual SemVer input
+      if: github.event_name == 'workflow_dispatch'
+      run: |
+        if [[ ! "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+          echo "version must be SemVer like v1.2.3" >&2
+          exit 1
+        fi
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=semver,pattern={{version}},value=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          type=semver,pattern={{major}}.{{minor}},value=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          type=semver,pattern={{major}},value=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          type=sha,prefix=sha-
+
+    - name: Build and push image
+      id: build
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VERSION=${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          COMMIT=${{ github.sha }}
+          DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        provenance: true
+
+    - name: Scan image with Trivy
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        format: sarif
+        output: trivy-results.sarif
+        vuln-type: os,library
+        severity: CRITICAL,HIGH
+        exit-code: '1'
+
+    - name: Upload Trivy SARIF
+      if: always()
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: trivy-results.sarif
+
+    - name: Generate SBOM
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
+        format: spdx-json
+        output-file: sbom.spdx.json
+
+    - name: Attest SBOM
+      uses: actions/attest-sbom@v3
+      with:
+        subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        subject-digest: ${{ steps.build.outputs.digest }}
+        sbom-path: sbom.spdx.json
+        push-to-registry: true
+
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v4
+
+    - name: Sign image
+      env:
+        COSIGN_EXPERIMENTAL: 'true'
+      run: cosign sign --yes ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
