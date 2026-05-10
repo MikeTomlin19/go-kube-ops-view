@@ -32,7 +32,7 @@
   "homepage": "https://github.com/MikeTomlin19/go-kube-ops-view#readme",
   "dependencies": {
     "@babel/runtime": "^7.28.4",
-    "@pixi/filter-crt": "^2.7.0",
+    "@pixi/filter-crt": "^5.1.1",
     "pixi.js": "^4.8.9"
   },
   "devDependencies": {
