@@ -36,7 +36,7 @@ jobs:
       uses: azure/setup-helm@v4
 
     - name: Set up kubectl
-      uses: azure/setup-kubectl@v4
+      uses: azure/setup-kubectl@v5
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
