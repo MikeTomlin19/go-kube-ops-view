@@ -89,7 +89,7 @@ export default class Cluster extends PIXI.Graphics {
 
         for (const nodeName of Object.keys(this.cluster.nodes).sort()) {
             const node = this.cluster.nodes[nodeName]
-            let nodeBox = null
+            let nodeBox
 
             if (isMaster(node.labels)) {
                 nodeBox = new Node(node, this, this.tooltip, this.podsPerRowMaster, this.widthOfMasterNodePx, this.heightOfMasterNodePx)
