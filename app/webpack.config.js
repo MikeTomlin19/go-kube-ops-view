@@ -23,9 +23,6 @@ module.exports = {
         clean: true
     },
     resolve: {
-        alias: {
-            'pixi.js$': path.resolve(__dirname, 'node_modules/pixi.js/dist/pixi.js')
-        },
         fallback: {
             fs: false
         }
