@@ -43,6 +43,6 @@
     "eslint": "^8.57.1",
     "rimraf": "^6.1.0",
     "webpack": "^5.103.0",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^7.0.2"
   }
 }
