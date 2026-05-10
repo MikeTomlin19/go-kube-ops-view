@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Production docker-compose configuration
 # Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
 
@@ -8,7 +6,7 @@ services:
     # Production build configuration
     build:
       context: .
-      dockerfile: Dockerfile.go
+      dockerfile: Dockerfile
       args:
         VERSION: ${VERSION:-latest}
         COMMIT: ${COMMIT:-unknown}

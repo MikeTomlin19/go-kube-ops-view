@@ -151,12 +151,12 @@ validate_k8s_manifests() {
     info "Validating Kubernetes manifests"
 
     local manifests=(
-        "deploy/deployment-go.yaml"
+        "deploy/deployment.yaml"
         "deploy/service.yaml"
         "deploy/rbac.yaml"
         "deploy/redis-deployment.yaml"
         "deploy/redis-service.yaml"
-        "deploy/kustomization-go.yaml"
+        "deploy/kustomization.yaml"
     )
 
     for manifest in "${manifests[@]}"; do
@@ -223,23 +223,23 @@ validate_config_files() {
     info "Validating configuration files"
 
     # Check .dockerignore
-    if [[ -f ".dockerignore.go" ]]; then
-        success ".dockerignore.go exists"
+    if [[ -f ".dockerignore" ]]; then
+        success ".dockerignore exists"
 
         # Check for common patterns
-        if grep -q "\.git" ".dockerignore.go"; then
-            success ".dockerignore.go excludes .git"
+        if grep -q "\.git" ".dockerignore"; then
+            success ".dockerignore excludes .git"
         else
-            warn ".dockerignore.go should exclude .git"
+            warn ".dockerignore should exclude .git"
         fi
 
-        if grep -q "node_modules" ".dockerignore.go"; then
-            success ".dockerignore.go excludes node_modules"
+        if grep -q "node_modules" ".dockerignore"; then
+            success ".dockerignore excludes node_modules"
         else
-            warn ".dockerignore.go should exclude node_modules"
+            warn ".dockerignore should exclude node_modules"
         fi
     else
-        warn ".dockerignore.go missing"
+        warn ".dockerignore missing"
     fi
 
     # Check Redis configuration
@@ -288,9 +288,9 @@ test_docker_build() {
         return 1
     fi
 
-    # Test if we can build the image (dry run)
+    # Test Dockerfile syntax and build context without producing an image.
     info "Testing Dockerfile build context..."
-    if docker build -f Dockerfile.go --dry-run . >/dev/null 2>&1; then
+    if docker buildx build --check -f Dockerfile . >/dev/null 2>&1; then
         success "Dockerfile build context is valid"
     else
         warn "Dockerfile build context may have issues"
@@ -372,7 +372,7 @@ main() {
 
     # Run all validations
     check_dependencies || validation_failed=true
-    validate_dockerfile "Dockerfile.go" || validation_failed=true
+    validate_dockerfile "Dockerfile" || validation_failed=true
     validate_docker_compose "docker-compose.yml" || validation_failed=true
     validate_docker_compose "docker-compose.prod.yml" || validation_failed=true
     validate_k8s_manifests || validation_failed=true

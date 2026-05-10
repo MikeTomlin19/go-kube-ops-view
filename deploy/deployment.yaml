@@ -24,7 +24,7 @@ spec:
       containers:
       - name: service
         # Update this to your registry/image when building
-        image: kube-ops-view:latest
+        image: go-kube-ops-view:latest
         imagePullPolicy: IfNotPresent
         args:
         # Server configuration

@@ -42,7 +42,7 @@ spec:
 
       containers:
       - name: kube-ops-view
-        image: kube-ops-view:latest
+        image: go-kube-ops-view:latest
         imagePullPolicy: IfNotPresent
 
         ports:

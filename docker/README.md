@@ -29,7 +29,7 @@ This directory contains Docker configuration files and documentation for running
 
 2. **Build manually:**
    ```bash
-   docker build -f Dockerfile.go -t kube-ops-view:latest .
+   docker build -f Dockerfile -t go-kube-ops-view:latest .
    ```
 
 3. **Build for multiple platforms:**
@@ -179,7 +179,7 @@ data:
 
 3. **Deploy the application:**
    ```bash
-   kubectl apply -f deploy/deployment-go.yaml
+   kubectl apply -f deploy/deployment.yaml
    kubectl apply -f deploy/service.yaml
    ```
 
@@ -247,7 +247,7 @@ Prometheus metrics are available for monitoring:
 Enable debug mode for detailed logging:
 
 ```bash
-docker run -e DEBUG=true -e LOG_LEVEL=debug kube-ops-view:latest
+docker run -e DEBUG=true -e LOG_LEVEL=debug go-kube-ops-view:latest
 ```
 
 ### Testing
@@ -331,7 +331,7 @@ Replace the Python image with the Go image:
 image: go-kube-ops-view:23.5.0
 
 # After (Go)
-image: kube-ops-view:latest
+image: go-kube-ops-view:latest
 ```
 
 ### Volume Mounts

@@ -5,15 +5,17 @@ metadata:
   name: kube-ops-view-development
 
 # Base configuration
-bases:
+resources:
 - ../../production
 
 # Namespace override
 namespace: kube-ops-view-dev
 
 # Environment-specific labels
-commonLabels:
-  environment: development
+labels:
+- includeSelectors: true
+  pairs:
+    environment: development
 
 # Environment-specific annotations
 commonAnnotations:
@@ -68,7 +70,7 @@ patches:
 
 # Images for development
 images:
-- name: kube-ops-view
+- name: go-kube-ops-view
   newTag: dev
 - name: redis
   newTag: 7-alpine

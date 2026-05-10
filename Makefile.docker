@@ -2,7 +2,7 @@
 # Usage: make -f Makefile.docker <target>
 
 # Configuration
-IMAGE_NAME ?= kube-ops-view
+IMAGE_NAME ?= go-kube-ops-view
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -10,7 +10,7 @@ REGISTRY ?=
 PLATFORM ?= linux/amd64,linux/arm64
 
 # Docker configuration
-DOCKERFILE = Dockerfile.go
+DOCKERFILE = Dockerfile
 DOCKER_BUILD_ARGS = --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg DATE=$(DATE)
 FULL_IMAGE_NAME = $(if $(REGISTRY),$(REGISTRY)/,)$(IMAGE_NAME):$(VERSION)
 
@@ -154,22 +154,14 @@ health: ## Check application health
 	fi
 
 # Kubernetes targets
-k8s-deploy: ## Deploy to Kubernetes using existing manifests
+k8s-deploy: ## Deploy to Kubernetes using kustomize
 	@echo "$(GREEN)Deploying to Kubernetes...$(NC)"
-	kubectl apply -f deploy/rbac.yaml
-	kubectl apply -f deploy/service.yaml
-	kubectl apply -f deploy/redis-deployment.yaml
-	kubectl apply -f deploy/redis-service.yaml
-	sed 's|image: .*|image: $(FULL_IMAGE_NAME)|' deploy/deployment-go.yaml | kubectl apply -f -
+	kubectl apply -k deploy
 	@echo "$(GREEN)Kubernetes deployment completed$(NC)"
 
 k8s-delete: ## Delete Kubernetes deployment
 	@echo "$(YELLOW)Deleting Kubernetes deployment...$(NC)"
-	kubectl delete -f deploy/deployment-go.yaml --ignore-not-found=true
-	kubectl delete -f deploy/redis-deployment.yaml --ignore-not-found=true
-	kubectl delete -f deploy/redis-service.yaml --ignore-not-found=true
-	kubectl delete -f deploy/service.yaml --ignore-not-found=true
-	kubectl delete -f deploy/rbac.yaml --ignore-not-found=true
+	kubectl delete -k deploy --ignore-not-found=true
 	@echo "$(GREEN)Kubernetes deployment deleted$(NC)"
 
 # CI/CD targets

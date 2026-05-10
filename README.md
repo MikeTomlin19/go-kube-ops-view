@@ -2,7 +2,7 @@ go-kube-ops-view
 ================
 
 This repository is a Go backend rewrite and tooling modernization of
-[Kubernetes Operational View](https://github.com/MikeTomlin19/go-kube-ops-view),
+[Kubernetes Operational View](https://github.com/hjacobs/kube-ops-view),
 originally maintained by Henning Jacobs and contributors. The dashboard
 concept, visual design, and frontend behavior are derived from that project.
 
@@ -77,23 +77,40 @@ $ docker run -it -p 8080:8080 go-kube-ops-view:latest --mock
 
 ### Installation
 
-You can find example Kubernetes manifests for deployment in the `deploy`
-folder. It should be as simple as:
+You can install with kustomize from the checked-out repository:
 
 ``` {.sourceCode .bash}
-$ kubectl apply -k deploy  # apply all manifests from the folder
+$ make install-kustomize
+```
+
+Use `KUSTOMIZE_PATH` to select another overlay:
+
+``` {.sourceCode .bash}
+$ make install-kustomize KUSTOMIZE_PATH=deploy/overlays/development
+$ make install-kustomize KUSTOMIZE_PATH=deploy/overlays/staging
+```
+
+You can also install with Helm:
+
+``` {.sourceCode .bash}
+$ make install-helm
+$ make install-helm HELM_VALUES=deploy/helm/kube-ops-view/values-production.yaml
 ```
 
 Afterwards you can open \"kube-ops-view\" via kubectl port-forward:
 
 ``` {.sourceCode .bash}
-$ kubectl port-forward service/kube-ops-view 8080:80
+$ kubectl -n kube-ops-view port-forward service/kube-ops-view 8080:80
 ```
 
 Now direct your browser to <http://localhost:8080/>
 
-The `deploy/helm/kube-ops-view` directory contains a Helm chart for local
-packaging.
+Raw commands are also supported:
+
+``` {.sourceCode .bash}
+$ kubectl apply -k deploy/production
+$ helm upgrade --install kube-ops-view deploy/helm/kube-ops-view --namespace kube-ops-view --create-namespace
+```
 
 Development
 -----------
@@ -109,10 +126,11 @@ $ go run . --mock --debug
 Building
 --------
 
-The provided `Makefile` will generate a Docker image by default:
+The Makefile exposes the same checks used by CI:
 
 ``` {.sourceCode .bash}
-$ make
+$ make ci
+$ make docker-smoke TAG=ci
 ```
 
 Multiple Clusters

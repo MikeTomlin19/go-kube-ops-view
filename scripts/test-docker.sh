@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # Configuration
-IMAGE_NAME=${IMAGE_NAME:-"kube-ops-view:latest"}
+IMAGE_NAME=${IMAGE_NAME:-"go-kube-ops-view:latest"}
 CONTAINER_NAME="kube-ops-view-test"
 TEST_PORT=${TEST_PORT:-"8080"}
 TIMEOUT=${TIMEOUT:-"30"}
@@ -294,7 +294,7 @@ test_kubernetes_deployment() {
     kubectl apply -n "$test_namespace" -f deploy/redis-service.yaml
 
     # Apply Go deployment with image override
-    sed "s|image: .*|image: $IMAGE_NAME|" deploy/deployment-go.yaml | \
+    sed "s|image: .*|image: $IMAGE_NAME|" deploy/deployment.yaml | \
         kubectl apply -n "$test_namespace" -f -
 
     # Wait for deployment to be ready
@@ -356,7 +356,7 @@ Test Docker container for kube-ops-view
 
 OPTIONS:
     -h, --help          Show this help message
-    -i, --image         Docker image name to test (default: kube-ops-view:latest)
+    -i, --image         Docker image name to test (default: go-kube-ops-view:latest)
     -p, --port          Test port to use (default: 8080)
     -t, --timeout       Timeout for container readiness (default: 30s)
 

@@ -5,17 +5,19 @@ metadata:
   name: kube-ops-view-go
 
 # Common labels applied to all resources
-commonLabels:
-  app.kubernetes.io/name: kube-ops-view
-  app.kubernetes.io/component: frontend
-  app.kubernetes.io/version: go
-  app.kubernetes.io/part-of: kube-ops-view
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/version: go
+    app.kubernetes.io/part-of: kube-ops-view
 
 # Resources to include
 resources:
 - rbac.yaml
 - service.yaml
-- deployment-go.yaml
+- deployment.yaml
 - redis-deployment.yaml
 - redis-service.yaml
 
@@ -37,7 +39,7 @@ secretGenerator:
 
 # Images to update
 images:
-- name: kube-ops-view
+- name: go-kube-ops-view
   newTag: latest
 - name: redis
   newTag: 7-alpine

@@ -1,14 +1,9 @@
-version: '3.8'
-
 # Development overrides for docker-compose.yml
 # This file is automatically loaded by docker-compose and provides
 # development-specific configurations
 
 services:
   kube-ops-view:
-    # Override build for development
-    build:
-      target: go-builder  # Stop at builder stage for faster rebuilds during development
     # Mount source code for live development (if needed)
     volumes:
       - ${HOME}/.kube:/home/appuser/.kube:ro

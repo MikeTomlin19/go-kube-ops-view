@@ -6,6 +6,9 @@
   "config": {
     "buildDir": "../assets/static/build"
   },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "prestart": "npm install",
     "start": "NODE_ENV=development webpack --watch --config ./webpack.config.js",

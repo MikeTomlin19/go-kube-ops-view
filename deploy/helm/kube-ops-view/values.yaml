@@ -18,7 +18,7 @@ app:
 # Image configuration
 image:
   registry: ""
-  repository: kube-ops-view
+  repository: go-kube-ops-view
   tag: "latest"
   pullPolicy: IfNotPresent
 

@@ -8,10 +8,12 @@ metadata:
 namespace: kube-ops-view
 
 # Common labels applied to all resources
-commonLabels:
-  app.kubernetes.io/name: kube-ops-view
-  app.kubernetes.io/part-of: kube-ops-view
-  environment: production
+labels:
+- includeSelectors: true
+  pairs:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/part-of: kube-ops-view
+    environment: production
 
 # Common annotations
 commonAnnotations:
@@ -34,7 +36,7 @@ resources:
 
 # Images to update
 images:
-- name: kube-ops-view
+- name: go-kube-ops-view
   newTag: latest
 - name: redis
   newTag: 7-alpine

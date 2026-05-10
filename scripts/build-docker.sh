@@ -7,7 +7,7 @@ set -euo pipefail
 VERSION=${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo "dev")}
 COMMIT=${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}
 DATE=${DATE:-$(date -u +"%Y-%m-%dT%H:%M:%SZ")}
-IMAGE_NAME=${IMAGE_NAME:-"kube-ops-view"}
+IMAGE_NAME=${IMAGE_NAME:-"go-kube-ops-view"}
 REGISTRY=${REGISTRY:-""}
 PLATFORM=${PLATFORM:-"linux/amd64,linux/arm64"}
 PUSH=${PUSH:-"false"}
@@ -52,7 +52,7 @@ build_single_platform() {
 
     docker build \
         --platform "$platform" \
-        --file Dockerfile.go \
+        --file Dockerfile \
         --build-arg VERSION="$VERSION" \
         --build-arg COMMIT="$COMMIT" \
         --build-arg DATE="$DATE" \
@@ -90,7 +90,7 @@ build_multi_platform() {
     local build_cmd=(
         docker buildx build
         --platform "$PLATFORM"
-        --file Dockerfile.go
+        --file Dockerfile
         --build-arg "VERSION=$VERSION"
         --build-arg "COMMIT=$COMMIT"
         --build-arg "DATE=$DATE"
@@ -154,8 +154,8 @@ main() {
     fi
 
     # Check if we're in the right directory
-    if [[ ! -f "Dockerfile.go" ]]; then
-        error "Dockerfile.go not found. Please run this script from the project root."
+    if [[ ! -f "Dockerfile" ]]; then
+        error "Dockerfile not found. Please run this script from the project root."
     fi
 
     # Check if we need multi-platform build
@@ -190,7 +190,7 @@ OPTIONS:
     -h, --help          Show this help message
     -v, --version       Set version tag (default: git describe or 'dev')
     -r, --registry      Set registry prefix (e.g., 'docker.io/myuser')
-    -n, --name          Set image name (default: 'kube-ops-view')
+    -n, --name          Set image name (default: 'go-kube-ops-view')
     -p, --platform      Set target platform(s) (default: 'linux/amd64,linux/arm64')
     --push              Push image to registry after build
     --test              Run tests after build (default for local builds)

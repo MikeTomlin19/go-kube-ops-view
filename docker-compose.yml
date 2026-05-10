@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
   kube-ops-view:
     build:
       context: .
-      dockerfile: Dockerfile.go
+      dockerfile: Dockerfile
       args:
         VERSION: ${VERSION:-dev}
         COMMIT: ${COMMIT:-unknown}

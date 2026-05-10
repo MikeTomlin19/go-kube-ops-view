@@ -5,15 +5,17 @@ metadata:
   name: kube-ops-view-staging
 
 # Base configuration
-bases:
+resources:
 - ../../production
 
 # Namespace override
 namespace: kube-ops-view-staging
 
 # Environment-specific labels
-commonLabels:
-  environment: staging
+labels:
+- includeSelectors: true
+  pairs:
+    environment: staging
 
 # Environment-specific annotations
 commonAnnotations:
@@ -56,7 +58,7 @@ patches:
 
 # Images for staging
 images:
-- name: kube-ops-view
+- name: go-kube-ops-view
   newTag: staging
 - name: redis
   newTag: 7-alpine
