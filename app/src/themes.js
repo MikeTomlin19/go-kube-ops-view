@@ -55,7 +55,7 @@ class BlackAndWhiteTheme extends DefaultTheme {
         this.secondaryColor = 0x000000
     }
     apply(stage) {
-        const filter = new PIXI.filters.ColorMatrixFilter()
+        const filter = new PIXI.ColorMatrixFilter()
         filter.blackAndWhite()
         stage.filters = [filter]
     }
@@ -68,7 +68,7 @@ class SepiaTheme extends DefaultTheme {
         this.name = 'sepia'
     }
     apply(stage) {
-        const filter = new PIXI.filters.ColorMatrixFilter()
+        const filter = new PIXI.ColorMatrixFilter()
         filter.sepia()
         stage.filters = [filter]
     }
@@ -81,7 +81,7 @@ class PolaroidTheme extends DefaultTheme {
         this.name = 'polaroid'
     }
     apply(stage) {
-        const filter = new PIXI.filters.ColorMatrixFilter()
+        const filter = new PIXI.ColorMatrixFilter()
         filter.polaroid()
         stage.filters = [filter]
     }
@@ -96,7 +96,7 @@ class HighContrastTheme extends DefaultTheme {
         this.secondaryColor = 0x000000
     }
     apply(stage) {
-        const filter = new PIXI.filters.ColorMatrixFilter()
+        const filter = new PIXI.ColorMatrixFilter()
         filter.saturate(3)
         stage.filters = [filter]
     }
@@ -115,7 +115,7 @@ class CRTTheme extends DefaultTheme {
 
         stage.filters = [filter]
         this.filter = filter
-        PIXI.ticker.shared.add(this.animate, this)
+        PIXI.Ticker.shared.add(this.animate, this)
     }
 
     animate(_delta) {

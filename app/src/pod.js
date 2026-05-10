@@ -98,9 +98,9 @@ export class Pod extends PIXI.Graphics {
 
     destroy() {
         if (this.tick) {
-            PIXI.ticker.shared.remove(this.tick, this)
+            PIXI.Ticker.shared.remove(this.tick, this)
         }
-        PIXI.ticker.shared.remove(this.animateMove, this)
+        PIXI.Ticker.shared.remove(this.animateMove, this)
         super.destroy()
     }
 
@@ -109,7 +109,7 @@ export class Pod extends PIXI.Graphics {
         const deltaY = this._targetPosition.y - this.position.y
         if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
             this.position = this._targetPosition
-            PIXI.ticker.shared.remove(this.animateMove, this)
+            PIXI.Ticker.shared.remove(this.animateMove, this)
         } else {
             if (Math.abs(deltaX) > time) {
                 this.position.x += time * Math.sign(deltaX)
@@ -127,7 +127,7 @@ export class Pod extends PIXI.Graphics {
         } else if (!this._targetPosition.equals(targetPosition)) {
             // animate moving to new position
             this._targetPosition = targetPosition
-            PIXI.ticker.shared.add(this.animateMove, this)
+            PIXI.Ticker.shared.add(this.animateMove, this)
         }
     }
 
@@ -170,17 +170,17 @@ export class Pod extends PIXI.Graphics {
     }
 
     pulsate(_time) {
-        const v = Math.sin((PIXI.ticker.shared.lastTime % 1000) / 1000 * Math.PI)
+        const v = Math.sin((PIXI.Ticker.shared.lastTime % 1000) / 1000 * Math.PI)
         this.alpha = v * this._progress
     }
 
     crashing(_time) {
-        const v = Math.sin((PIXI.ticker.shared.lastTime % 1000) / 1000 * Math.PI)
-        this.tint = PIXI.utils.rgb2hex([1, v, v])
+        const v = Math.sin((PIXI.Ticker.shared.lastTime % 1000) / 1000 * Math.PI)
+        this.tint = (255 << 16) | (Math.round(v * 255) << 8) | Math.round(v * 255)
     }
 
     terminating(_time) {
-        const v = Math.sin(((1000 + PIXI.ticker.shared.lastTime) % 1000) / 1000 * Math.PI)
+        const v = Math.sin(((1000 + PIXI.Ticker.shared.lastTime) % 1000) / 1000 * Math.PI)
         this.cross.alpha = v
     }
 
@@ -205,7 +205,7 @@ export class Pod extends PIXI.Graphics {
         let newTick = null
 
         const podBox = this
-        podBox.interactive = true
+        podBox.eventMode = 'static'
         podBox.on('mouseover', function () {
             podBox.filters = podBox.filters.filter(x => x != BRIGHTNESS_FILTER).concat([BRIGHTNESS_FILTER])
             let s = this.pod.name
@@ -251,7 +251,7 @@ export class Pod extends PIXI.Graphics {
             this.tooltip.visible = false
         })
         if (App.current.config.podLinkUrlTemplate !== null) {
-            podBox.buttonMode = true
+            podBox.cursor = 'pointer'
             podBox.on('click', function() {
                 location.href = App.current.config.podLinkUrlTemplate.replace('{cluster}', this.cluster.cluster.id).replace('{namespace}', this.pod.namespace).replace('{name}', this.pod.name)
             })
@@ -313,9 +313,9 @@ export class Pod extends PIXI.Graphics {
             this.tick = newTick
             // important: only register new listener if it does not exist yet!
             // (otherwise we leak listeners)
-            PIXI.ticker.shared.add(this.tick, this)
+            PIXI.Ticker.shared.add(this.tick, this)
         } else if (!newTick && this.tick) {
-            PIXI.ticker.shared.remove(this.tick, this)
+            PIXI.Ticker.shared.remove(this.tick, this)
             this.tick = null
             this.alpha = this._progress
             this.tint = 0xffffff

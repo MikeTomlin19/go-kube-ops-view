@@ -8,6 +8,11 @@ import {JSON_delta} from './vendor/json_delta.js'
 import Config from './config.js'
 
 const PIXI = require('pixi.js')
+require('@pixi/canvas-display')
+require('@pixi/canvas-graphics')
+require('@pixi/canvas-text')
+require('@pixi/canvas-sprite')
+require('@pixi/canvas-renderer')
 
 const addWheelListener = require('./vendor/addWheelListener')
 
@@ -289,10 +294,9 @@ export default class App {
         addEventListener('touchend', touchEndHandler.bind(this), false)
 
         const that = this
-        const interactionObj = new PIXI.interaction.InteractionData()
 
         function getLocalCoordinates(x, y) {
-            return interactionObj.getLocalPosition(that.viewContainer, undefined, {x: x, y: y})
+            return that.viewContainer.toLocal(new PIXI.Point(x, y))
         }
 
         const minScale = 1 / 32
@@ -340,8 +344,8 @@ export default class App {
         })
         searchPrompt.x = 26
         searchPrompt.y = 8
-        PIXI.ticker.shared.add(function (_) {
-            var v = Math.sin((PIXI.ticker.shared.lastTime % 2000) / 2000 * Math.PI)
+        PIXI.Ticker.shared.add(function (_) {
+            var v = Math.sin((PIXI.Ticker.shared.lastTime % 2000) / 2000 * Math.PI)
             searchPrompt.alpha = v
         })
         this.stage.addChild(searchPrompt)
@@ -408,14 +412,14 @@ export default class App {
         const pod = new Pod(originalPod.pod, null, this.tooltip)
         pod.draw()
         pod.blendMode = PIXI.BLEND_MODES.ADD
-        pod.interactive = false
+        pod.eventMode = 'none'
         const targetPosition = globalPosition
         const angle = Math.random() * Math.PI * 2
         const cos = Math.cos(angle)
         const sin = Math.sin(angle)
         const distance = Math.max(200, Math.random() * Math.min(this.renderer.width, this.renderer.height))
         // blur filter looks cool, but has huge performance penalty
-        // const blur = new PIXI.filters.BlurFilter(20, 2)
+        // const blur = new PIXI.BlurFilter(20, 2)
         // pod.filters = [blur]
         pod.pivot.x = pod.width / 2
         pod.pivot.y = pod.height / 2
@@ -435,13 +439,13 @@ export default class App {
             // blur.blur = (1 - alpha) * 20
             pod.scale.set(scale)
             if (progress >= 1) {
-                PIXI.ticker.shared.remove(tick)
+                PIXI.Ticker.shared.remove(tick)
                 that.stage.removeChild(pod)
                 pod.destroy()
                 originalPod.visible = true
             }
         }
-        PIXI.ticker.shared.add(tick)
+        PIXI.Ticker.shared.add(tick)
         this.stage.addChild(pod)
     }
 
@@ -450,7 +454,7 @@ export default class App {
         pod.draw()
         pod.blendMode = PIXI.BLEND_MODES.ADD
         const globalCenter = new PIXI.Point(globalPosition.x + pod.width / 2, globalPosition.y + pod.height / 2)
-        const blur = new PIXI.filters.BlurFilter(4)
+        const blur = new PIXI.BlurFilter(4)
         pod.filters = [blur]
         pod.position = globalPosition.clone()
         pod.alpha = 1
@@ -467,12 +471,12 @@ export default class App {
             pod.position.set(globalCenter.x - pod.width / 2, globalCenter.y - pod.height / 2)
 
             if (progress <= 0) {
-                PIXI.ticker.shared.remove(tick)
+                PIXI.Ticker.shared.remove(tick)
                 that.stage.removeChild(pod)
                 pod.destroy()
             }
         }
-        PIXI.ticker.shared.add(tick)
+        PIXI.Ticker.shared.add(tick)
         this.stage.addChild(pod)
     }
 
@@ -725,6 +729,6 @@ export default class App {
         this.draw()
         this.connect()
 
-        PIXI.ticker.shared.add(this.tick, this)
+        PIXI.Ticker.shared.add(this.tick, this)
     }
 }
