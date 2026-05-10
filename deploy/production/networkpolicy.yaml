@@ -1,0 +1,83 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-ops-view
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/part-of: kube-ops-view
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: frontend
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from any pod in the cluster (for web access)
+  - from: []
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow egress to Kubernetes API server
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 6443
+  # Allow egress to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kube-ops-view
+          app.kubernetes.io/component: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-ops-view-redis
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: kube-ops-view
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress only from kube-ops-view frontend
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: kube-ops-view
+          app.kubernetes.io/component: frontend
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

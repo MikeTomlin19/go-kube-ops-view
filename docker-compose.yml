@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  kube-ops-view:
+    build:
+      context: .
+      dockerfile: Dockerfile.go
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-unknown}
+        DATE: ${DATE:-unknown}
+    ports:
+      - "8080:8080"
+    environment:
+      # Server configuration
+      - SERVER_PORT=8080
+      - DEBUG=true
+      - SECRET_KEY=development-secret-key
+
+      # Redis configuration for multi-replica support
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+
+      # Cluster configuration (override as needed)
+      - CLUSTERS=${CLUSTERS:-}
+      - CLUSTER_REGISTRY_URL=${CLUSTER_REGISTRY_URL:-}
+      - KUBECONFIG_PATH=${KUBECONFIG_PATH:-}
+      - KUBECONFIG_CONTEXTS=${KUBECONFIG_CONTEXTS:-}
+      - QUERY_INTERVAL=5s
+      - MOCK=${MOCK:-false}
+
+      # Authentication (optional)
+      - OAUTH_AUTHORIZE_URL=${OAUTH_AUTHORIZE_URL:-}
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL:-}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:-}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:-}
+      - OAUTH_SCOPE=${OAUTH_SCOPE:-}
+
+      # Logging
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=text
+      - LOG_OUTPUT=stdout
+    volumes:
+      # Mount kubeconfig if available
+      - ${HOME}/.kube:/home/appuser/.kube:ro
+      # Mount any additional config files
+      - ${PWD}/config:/app/config:ro
+    depends_on:
+      - redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    command: redis-server --appendonly yes
+
+  # Optional: Redis Commander for Redis management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - tools
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: kube-ops-view-network

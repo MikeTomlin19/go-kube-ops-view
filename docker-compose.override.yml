@@ -1,0 +1,33 @@
+version: '3.8'
+
+# Development overrides for docker-compose.yml
+# This file is automatically loaded by docker-compose and provides
+# development-specific configurations
+
+services:
+  kube-ops-view:
+    # Override build for development
+    build:
+      target: go-builder  # Stop at builder stage for faster rebuilds during development
+    # Mount source code for live development (if needed)
+    volumes:
+      - ${HOME}/.kube:/home/appuser/.kube:ro
+      - ${PWD}/config:/app/config:ro
+      # Uncomment for live development (requires proper file watching setup)
+      # - ${PWD}:/src:ro
+    environment:
+      # Development-specific environment variables
+      - DEBUG=true
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=text
+      - MOCK=true  # Use mock data for development
+    # Enable all profiles for development
+    profiles: []
+
+  redis:
+    # Development Redis configuration
+    command: redis-server --appendonly yes --loglevel verbose
+
+  # Enable Redis Commander by default in development
+  redis-commander:
+    profiles: []

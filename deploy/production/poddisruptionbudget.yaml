@@ -1,0 +1,32 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kube-ops-view
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: frontend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: kube-ops-view-redis
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: kube-ops-view
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: redis

@@ -1,0 +1,103 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}-redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.redis.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "kube-ops-view.redis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-ops-view.redis.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: redis
+        image: {{ include "kube-ops-view.redis.image" . }}
+        imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+        {{- if .Values.redis.password }}
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-redis
+              key: password
+        {{- end }}
+        command:
+        - redis-server
+        - /usr/local/etc/redis/redis.conf
+        {{- if .Values.redis.password }}
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        {{- end }}
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 999
+          runAsGroup: 999
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /usr/local/etc/redis
+          readOnly: true
+      volumes:
+      {{- if .Values.redis.persistence.enabled }}
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: {{ include "kube-ops-view.fullname" . }}-redis-data
+      {{- else }}
+      - name: redis-data
+        emptyDir: {}
+      {{- end }}
+      - name: redis-config
+        configMap:
+          name: {{ include "kube-ops-view.fullname" . }}-redis-config
+      terminationGracePeriodSeconds: 30
+{{- end }}

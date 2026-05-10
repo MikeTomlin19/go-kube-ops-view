@@ -1,0 +1,107 @@
+version: '3.8'
+
+# Production docker-compose configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+
+services:
+  kube-ops-view:
+    # Production build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile.go
+      args:
+        VERSION: ${VERSION:-latest}
+        COMMIT: ${COMMIT:-unknown}
+        DATE: ${DATE:-unknown}
+    # Production environment variables
+    environment:
+      # Server configuration
+      - SERVER_PORT=8080
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY}  # Must be provided in production
+
+      # Redis configuration
+      - REDIS_URL=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=0
+
+      # Cluster configuration
+      - CLUSTERS=${CLUSTERS}
+      - CLUSTER_REGISTRY_URL=${CLUSTER_REGISTRY_URL:-}
+      - KUBECONFIG_PATH=${KUBECONFIG_PATH:-}
+      - KUBECONFIG_CONTEXTS=${KUBECONFIG_CONTEXTS:-}
+      - QUERY_INTERVAL=${QUERY_INTERVAL:-5s}
+      - MOCK=false
+
+      # Authentication
+      - OAUTH_AUTHORIZE_URL=${OAUTH_AUTHORIZE_URL:-}
+      - OAUTH_TOKEN_URL=${OAUTH_TOKEN_URL:-}
+      - OAUTH_CLIENT_ID=${OAUTH_CLIENT_ID:-}
+      - OAUTH_CLIENT_SECRET=${OAUTH_CLIENT_SECRET:-}
+      - OAUTH_SCOPE=${OAUTH_SCOPE:-}
+
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      - LOG_OUTPUT=stdout
+
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+    # Production volumes (read-only)
+    volumes:
+      - ${KUBECONFIG_PATH:-/dev/null}:/home/appuser/.kube/config:ro
+      - ${CONFIG_PATH:-/dev/null}:/app/config:ro
+
+    # Production restart policy
+    restart: unless-stopped
+
+    # Production health check with tighter intervals
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  redis:
+    # Production Redis configuration
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+      - ${PWD}/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
+    restart: unless-stopped
+
+    # Production resource limits for Redis
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Production health check
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local

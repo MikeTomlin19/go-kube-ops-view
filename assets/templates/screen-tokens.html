@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Screen Tokens</title>
+        <link rel="shortcut icon" href="{{.RoutePrefix}}static/favicon.ico">
+    </head>
+    <body>
+        <h1>Screen Tokens</h1>
+        {{if .NewToken}}
+            <p>The new token is: <code>{{.NewToken}}</code></p>
+        {{end}}
+        <form action="" method="post">
+            <button type="submit">Create new token</button>
+        </form>
+    </body>
+</html>

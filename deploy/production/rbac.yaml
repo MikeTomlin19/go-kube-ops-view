@@ -1,0 +1,101 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-ops-view
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+automountServiceAccountToken: true
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+rules:
+# Core resources for cluster visualization
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+
+# Metrics API access for resource usage
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+
+# Optional: Custom metrics (if using custom metrics API)
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+
+# Optional: External metrics (if using external metrics API)
+- apiGroups: ["external.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-ops-view
+subjects:
+- kind: ServiceAccount
+  name: kube-ops-view
+  namespace: kube-ops-view
+
+---
+# Optional: Role for accessing secrets in the same namespace (for OAuth credentials)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kube-ops-view-secrets
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["kube-ops-view-oauth", "kube-ops-view-secret"]
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: kube-ops-view-secrets
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: kube-ops-view-secrets
+subjects:
+- kind: ServiceAccount
+  name: kube-ops-view
+  namespace: kube-ops-view

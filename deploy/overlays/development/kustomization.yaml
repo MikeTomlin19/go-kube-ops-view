@@ -1,0 +1,81 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kube-ops-view-development
+
+# Base configuration
+bases:
+- ../../production
+
+# Namespace override
+namespace: kube-ops-view-dev
+
+# Environment-specific labels
+commonLabels:
+  environment: development
+
+# Environment-specific annotations
+commonAnnotations:
+  kube-ops-view.io/environment: development
+
+# ConfigMap patches for development
+patches:
+# Enable debug mode for development
+- target:
+    kind: ConfigMap
+    name: kube-ops-view-config
+  patch: |-
+    - op: replace
+      path: /data/DEBUG
+      value: "true"
+    - op: replace
+      path: /data/LOG_LEVEL
+      value: "debug"
+
+# Reduce replicas for development
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 1
+
+# Development resource limits (lower)
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+# Smaller PVC for development
+- target:
+    kind: PersistentVolumeClaim
+    name: kube-ops-view-redis-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: 1Gi
+
+# Images for development
+images:
+- name: kube-ops-view
+  newTag: dev
+- name: redis
+  newTag: 7-alpine
+
+# Replicas for development
+replicas:
+- name: kube-ops-view
+  count: 1
+- name: kube-ops-view-redis
+  count: 1

@@ -1,0 +1,191 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.deployment.replicaCount }}
+  strategy:
+    {{- toYaml .Values.deployment.strategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "kube-ops-view.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- include "kube-ops-view.configChecksum" . | nindent 8 }}
+        {{- include "kube-ops-view.secretChecksum" . | nindent 8 }}
+        {{- with .Values.deployment.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "kube-ops-view.selectorLabels" . | nindent 8 }}
+        {{- with .Values.deployment.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "kube-ops-view.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: kube-ops-view
+        image: {{ include "kube-ops-view.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.config.server.port }}
+          protocol: TCP
+        env:
+        # Load configuration from ConfigMap
+        - name: SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: SERVER_PORT
+        - name: ROUTE_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: ROUTE_PREFIX
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: DEBUG
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: LOG_LEVEL
+        - name: LOG_FORMAT
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: LOG_FORMAT
+        - name: QUERY_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: QUERY_INTERVAL
+
+        {{- if .Values.redis.enabled }}
+        # Redis configuration
+        - name: REDIS_URL
+          value: {{ include "kube-ops-view.redis.url" . }}
+        - name: REDIS_DB
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-config
+              key: REDIS_DB
+        {{- if .Values.redis.password }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "kube-ops-view.fullname" . }}-redis
+              key: password
+        {{- end }}
+        {{- end }}
+
+        # Secret configuration
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ if .Values.externalSecrets.app.enabled }}{{ .Values.externalSecrets.app.secretName }}{{ else }}{{ include "kube-ops-view.fullname" . }}-secret{{ end }}
+              key: {{ if .Values.externalSecrets.app.enabled }}{{ .Values.externalSecrets.app.secretKeyKey }}{{ else }}secret-key{{ end }}
+
+        {{- if .Values.config.oauth.enabled }}
+        # OAuth configuration
+        - name: OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ if .Values.externalSecrets.oauth.enabled }}{{ .Values.externalSecrets.oauth.secretName }}{{ else }}{{ include "kube-ops-view.fullname" . }}-oauth{{ end }}
+              key: {{ if .Values.externalSecrets.oauth.enabled }}{{ .Values.externalSecrets.oauth.clientSecretKey }}{{ else }}client-secret{{ end }}
+        {{- end }}
+
+        # Cluster configuration
+        {{- if not .Values.config.clusters.urls }}
+        - name: CLUSTERS
+          value: "https://kubernetes.default.svc"
+        {{- end }}
+
+        {{- if .Values.healthCheck.startupProbe.enabled }}
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.healthCheck.startupProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.startupProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.healthCheck.startupProbe.periodSeconds }}
+          successThreshold: {{ .Values.healthCheck.startupProbe.successThreshold }}
+          failureThreshold: {{ .Values.healthCheck.startupProbe.failureThreshold }}
+        {{- end }}
+
+        {{- if .Values.healthCheck.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.healthCheck.readinessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.readinessProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.healthCheck.readinessProbe.periodSeconds }}
+          successThreshold: {{ .Values.healthCheck.readinessProbe.successThreshold }}
+          failureThreshold: {{ .Values.healthCheck.readinessProbe.failureThreshold }}
+        {{- end }}
+
+        {{- if .Values.healthCheck.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: {{ .Values.healthCheck.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.healthCheck.livenessProbe.timeoutSeconds }}
+          periodSeconds: {{ .Values.healthCheck.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.healthCheck.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.healthCheck.livenessProbe.failureThreshold }}
+        {{- end }}
+
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        {{- if .Values.config.clusters.kubeconfigPath }}
+        - name: kubeconfig
+          mountPath: /etc/kubeconfig
+          readOnly: true
+        {{- end }}
+
+      volumes:
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+      {{- if .Values.config.clusters.kubeconfigPath }}
+      - name: kubeconfig
+        secret:
+          secretName: {{ include "kube-ops-view.fullname" . }}-kubeconfig
+          optional: true
+      {{- end }}
+
+      {{- with .Values.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.deployment.terminationGracePeriodSeconds }}

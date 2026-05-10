@@ -1,0 +1,184 @@
+# Makefile for Docker operations
+# Usage: make -f Makefile.docker <target>
+
+# Configuration
+IMAGE_NAME ?= kube-ops-view
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+REGISTRY ?=
+PLATFORM ?= linux/amd64,linux/arm64
+
+# Docker configuration
+DOCKERFILE = Dockerfile.go
+DOCKER_BUILD_ARGS = --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg DATE=$(DATE)
+FULL_IMAGE_NAME = $(if $(REGISTRY),$(REGISTRY)/,)$(IMAGE_NAME):$(VERSION)
+
+# Colors for output
+GREEN = \033[0;32m
+YELLOW = \033[1;33m
+RED = \033[0;31m
+NC = \033[0m # No Color
+
+.PHONY: help build build-multi push test clean dev-up dev-down prod-up prod-down logs
+
+# Default target
+help: ## Show this help message
+	@echo "Docker operations for $(IMAGE_NAME)"
+	@echo ""
+	@echo "Usage: make -f Makefile.docker <target>"
+	@echo ""
+	@echo "Targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  $(GREEN)%-15s$(NC) %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@echo ""
+	@echo "Variables:"
+	@echo "  IMAGE_NAME  = $(IMAGE_NAME)"
+	@echo "  VERSION     = $(VERSION)"
+	@echo "  REGISTRY    = $(REGISTRY)"
+	@echo "  PLATFORM    = $(PLATFORM)"
+
+build: ## Build Docker image for current platform
+	@echo "$(GREEN)Building Docker image: $(FULL_IMAGE_NAME)$(NC)"
+	docker build $(DOCKER_BUILD_ARGS) -f $(DOCKERFILE) -t $(FULL_IMAGE_NAME) .
+	@echo "$(GREEN)Build completed: $(FULL_IMAGE_NAME)$(NC)"
+
+build-multi: ## Build multi-platform Docker image
+	@echo "$(GREEN)Building multi-platform Docker image: $(FULL_IMAGE_NAME)$(NC)"
+	@echo "$(YELLOW)Platforms: $(PLATFORM)$(NC)"
+	docker buildx build $(DOCKER_BUILD_ARGS) --platform $(PLATFORM) -f $(DOCKERFILE) -t $(FULL_IMAGE_NAME) .
+	@echo "$(GREEN)Multi-platform build completed: $(FULL_IMAGE_NAME)$(NC)"
+
+push: build ## Build and push Docker image
+	@echo "$(GREEN)Pushing Docker image: $(FULL_IMAGE_NAME)$(NC)"
+	docker push $(FULL_IMAGE_NAME)
+	@echo "$(GREEN)Push completed: $(FULL_IMAGE_NAME)$(NC)"
+
+push-multi: ## Build and push multi-platform Docker image
+	@echo "$(GREEN)Building and pushing multi-platform Docker image: $(FULL_IMAGE_NAME)$(NC)"
+	@echo "$(YELLOW)Platforms: $(PLATFORM)$(NC)"
+	docker buildx build $(DOCKER_BUILD_ARGS) --platform $(PLATFORM) -f $(DOCKERFILE) -t $(FULL_IMAGE_NAME) --push .
+	@echo "$(GREEN)Multi-platform build and push completed: $(FULL_IMAGE_NAME)$(NC)"
+
+test: ## Test Docker image
+	@echo "$(GREEN)Testing Docker image: $(FULL_IMAGE_NAME)$(NC)"
+	./scripts/test-docker.sh --image $(FULL_IMAGE_NAME)
+	@echo "$(GREEN)Test completed successfully$(NC)"
+
+clean: ## Clean up Docker images and containers
+	@echo "$(YELLOW)Cleaning up Docker resources...$(NC)"
+	docker system prune -f
+	docker image prune -f
+	@echo "$(GREEN)Cleanup completed$(NC)"
+
+dev-up: ## Start development environment with docker-compose
+	@echo "$(GREEN)Starting development environment...$(NC)"
+	docker-compose up -d
+	@echo "$(GREEN)Development environment started$(NC)"
+	@echo "$(YELLOW)Application: http://localhost:8080$(NC)"
+	@echo "$(YELLOW)Redis Commander: http://localhost:8081$(NC)"
+
+dev-down: ## Stop development environment
+	@echo "$(YELLOW)Stopping development environment...$(NC)"
+	docker-compose down
+	@echo "$(GREEN)Development environment stopped$(NC)"
+
+prod-up: ## Start production environment with docker-compose
+	@echo "$(GREEN)Starting production environment...$(NC)"
+	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	@echo "$(GREEN)Production environment started$(NC)"
+	@echo "$(YELLOW)Application: http://localhost:8080$(NC)"
+
+prod-down: ## Stop production environment
+	@echo "$(YELLOW)Stopping production environment...$(NC)"
+	docker-compose -f docker-compose.yml -f docker-compose.prod.yml down
+	@echo "$(GREEN)Production environment stopped$(NC)"
+
+logs: ## Show logs from docker-compose services
+	docker-compose logs -f
+
+logs-app: ## Show logs from application service only
+	docker-compose logs -f kube-ops-view
+
+logs-redis: ## Show logs from Redis service only
+	docker-compose logs -f redis
+
+shell: ## Open shell in running container
+	@echo "$(GREEN)Opening shell in container...$(NC)"
+	docker exec -it $$(docker-compose ps -q kube-ops-view) /bin/sh
+
+redis-cli: ## Open Redis CLI
+	@echo "$(GREEN)Opening Redis CLI...$(NC)"
+	docker exec -it $$(docker-compose ps -q redis) redis-cli
+
+# Development targets
+dev-build: ## Build development image
+	@$(MAKE) -f $(MAKEFILE_LIST) build VERSION=dev
+
+dev-test: dev-build ## Build and test development image
+	@$(MAKE) -f $(MAKEFILE_LIST) test VERSION=dev
+
+# Release targets
+release: ## Build and push release image
+	@if [ "$(VERSION)" = "dev" ]; then \
+		echo "$(RED)Error: Cannot release with version 'dev'$(NC)"; \
+		exit 1; \
+	fi
+	@$(MAKE) -f $(MAKEFILE_LIST) push-multi
+
+# Utility targets
+info: ## Show build information
+	@echo "Build Information:"
+	@echo "  Image Name: $(FULL_IMAGE_NAME)"
+	@echo "  Version:    $(VERSION)"
+	@echo "  Commit:     $(COMMIT)"
+	@echo "  Date:       $(DATE)"
+	@echo "  Platform:   $(PLATFORM)"
+	@echo "  Registry:   $(REGISTRY)"
+
+size: ## Show Docker image size
+	@echo "$(GREEN)Docker image size:$(NC)"
+	docker images $(FULL_IMAGE_NAME) --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+inspect: ## Inspect Docker image
+	@echo "$(GREEN)Docker image inspection:$(NC)"
+	docker inspect $(FULL_IMAGE_NAME)
+
+# Health check targets
+health: ## Check application health
+	@echo "$(GREEN)Checking application health...$(NC)"
+	@if curl -f -s http://localhost:8080/health >/dev/null; then \
+		echo "$(GREEN)✓ Application is healthy$(NC)"; \
+	else \
+		echo "$(RED)✗ Application is not healthy$(NC)"; \
+		exit 1; \
+	fi
+
+# Kubernetes targets
+k8s-deploy: ## Deploy to Kubernetes using existing manifests
+	@echo "$(GREEN)Deploying to Kubernetes...$(NC)"
+	kubectl apply -f deploy/rbac.yaml
+	kubectl apply -f deploy/service.yaml
+	kubectl apply -f deploy/redis-deployment.yaml
+	kubectl apply -f deploy/redis-service.yaml
+	sed 's|image: .*|image: $(FULL_IMAGE_NAME)|' deploy/deployment-go.yaml | kubectl apply -f -
+	@echo "$(GREEN)Kubernetes deployment completed$(NC)"
+
+k8s-delete: ## Delete Kubernetes deployment
+	@echo "$(YELLOW)Deleting Kubernetes deployment...$(NC)"
+	kubectl delete -f deploy/deployment-go.yaml --ignore-not-found=true
+	kubectl delete -f deploy/redis-deployment.yaml --ignore-not-found=true
+	kubectl delete -f deploy/redis-service.yaml --ignore-not-found=true
+	kubectl delete -f deploy/service.yaml --ignore-not-found=true
+	kubectl delete -f deploy/rbac.yaml --ignore-not-found=true
+	@echo "$(GREEN)Kubernetes deployment deleted$(NC)"
+
+# CI/CD targets
+ci-build: ## Build for CI/CD (no cache)
+	@echo "$(GREEN)Building Docker image for CI/CD...$(NC)"
+	docker build --no-cache $(DOCKER_BUILD_ARGS) -f $(DOCKERFILE) -t $(FULL_IMAGE_NAME) .
+
+ci-test: ci-build ## Build and test for CI/CD
+	@$(MAKE) -f $(MAKEFILE_LIST) test
+
+ci-push: ci-test ## Build, test, and push for CI/CD
+	@$(MAKE) -f $(MAKEFILE_LIST) push

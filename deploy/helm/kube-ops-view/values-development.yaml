@@ -1,0 +1,76 @@
+# Development values for kube-ops-view
+# This overrides the default values.yaml for development deployment
+
+# Image configuration for development
+image:
+  tag: "dev"
+  pullPolicy: Always
+
+# Deployment configuration for development
+deployment:
+  replicaCount: 1
+
+# Resource configuration for development (lower limits)
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Application configuration for development
+config:
+  server:
+    debug: true
+    secretKey: "development-secret-key"
+  logging:
+    level: "debug"
+    format: "text"  # More readable in development
+  clusters:
+    queryInterval: "10s"  # Less frequent polling in dev
+
+# Redis configuration for development
+redis:
+  enabled: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  persistence:
+    enabled: false  # Use emptyDir in development
+  config:
+    maxmemory: "100mb"
+    maxmemoryPolicy: "allkeys-lru"
+  password: ""  # No password in development
+
+# Disable Pod Disruption Budget in development
+podDisruptionBudget:
+  enabled: false
+
+# Disable network policies in development for easier debugging
+networkPolicy:
+  enabled: false
+
+# Disable monitoring in development
+monitoring:
+  enabled: false
+
+# No external secrets in development
+externalSecrets:
+  enabled: false
+
+# Simple ingress for development
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  hosts:
+  - host: kube-ops-view.dev.local
+    paths:
+    - path: /
+      pathType: Prefix

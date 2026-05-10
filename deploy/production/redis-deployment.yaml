@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-ops-view-redis
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/part-of: kube-ops-view
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # Redis doesn't support rolling updates well without clustering
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-ops-view
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/part-of: kube-ops-view
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # Redis user
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - name: redis
+          containerPort: 6379
+          protocol: TCP
+
+        env:
+        # Optional Redis password
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-redis
+              key: password
+              optional: true
+
+        # Redis configuration
+        command:
+        - redis-server
+        - --appendonly
+        - "yes"
+        - --appendfsync
+        - "everysec"
+        - --maxmemory
+        - "128mb"
+        - --maxmemory-policy
+        - "allkeys-lru"
+        # Uncomment if using password authentication
+        # - --requirepass
+        # - $(REDIS_PASSWORD)
+
+        # Health check probes
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5
+
+        # Resource limits appropriate for Redis
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 999
+          runAsGroup: 999
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Volume mounts
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        - name: redis-config
+          mountPath: /usr/local/etc/redis
+          readOnly: true
+
+      volumes:
+      # Persistent storage for Redis data
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: kube-ops-view-redis-data
+
+      # Redis configuration
+      - name: redis-config
+        configMap:
+          name: kube-ops-view-redis-config
+          optional: true
+
+      # Node selection
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      # Termination grace period
+      terminationGracePeriodSeconds: 30

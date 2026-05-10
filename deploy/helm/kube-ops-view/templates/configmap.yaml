@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+data:
+  # Server configuration
+  SERVER_PORT: {{ .Values.config.server.port | quote }}
+  ROUTE_PREFIX: {{ .Values.config.server.routePrefix | quote }}
+  DEBUG: {{ .Values.config.server.debug | quote }}
+
+  # Logging configuration
+  LOG_LEVEL: {{ .Values.config.logging.level | quote }}
+  LOG_FORMAT: {{ .Values.config.logging.format | quote }}
+  LOG_OUTPUT: {{ .Values.config.logging.output | quote }}
+  LOG_ADD_SOURCE: {{ .Values.config.logging.addSource | quote }}
+  LOG_TIME_FORMAT: {{ .Values.config.logging.timeFormat | quote }}
+
+  # Cluster configuration
+  QUERY_INTERVAL: {{ .Values.config.clusters.queryInterval | quote }}
+  MOCK: {{ .Values.config.clusters.mock | quote }}
+  {{- if .Values.config.clusters.urls }}
+  CLUSTERS: {{ join "," .Values.config.clusters.urls | quote }}
+  {{- end }}
+  {{- if .Values.config.clusters.registryUrl }}
+  CLUSTER_REGISTRY_URL: {{ .Values.config.clusters.registryUrl | quote }}
+  {{- end }}
+  {{- if .Values.config.clusters.kubeconfigPath }}
+  KUBECONFIG_PATH: {{ .Values.config.clusters.kubeconfigPath | quote }}
+  {{- end }}
+  {{- if .Values.config.clusters.contexts }}
+  KUBECONFIG_CONTEXTS: {{ join "," .Values.config.clusters.contexts | quote }}
+  {{- end }}
+
+  # Redis configuration
+  {{- if .Values.redis.enabled }}
+  REDIS_DB: "0"
+  {{- end }}
+
+  # UI configuration
+  {{- if .Values.config.ui.nodeLinkUrlTemplate }}
+  NODE_LINK_URL_TEMPLATE: {{ .Values.config.ui.nodeLinkUrlTemplate | quote }}
+  {{- end }}
+  {{- if .Values.config.ui.podLinkUrlTemplate }}
+  POD_LINK_URL_TEMPLATE: {{ .Values.config.ui.podLinkUrlTemplate | quote }}
+  {{- end }}
+
+  # OAuth configuration
+  {{- if .Values.config.oauth.enabled }}
+  OAUTH_AUTHORIZE_URL: {{ .Values.config.oauth.authorizeUrl | quote }}
+  OAUTH_TOKEN_URL: {{ .Values.config.oauth.tokenUrl | quote }}
+  OAUTH_CLIENT_ID: {{ .Values.config.oauth.clientId | quote }}
+  {{- if .Values.config.oauth.scope }}
+  OAUTH_SCOPE: {{ .Values.config.oauth.scope | quote }}
+  {{- end }}
+  {{- end }}
+
+{{- if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}-redis-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.redis.labels" . | nindent 4 }}
+data:
+  redis.conf: |
+    # Memory management
+    maxmemory {{ .Values.redis.config.maxmemory }}
+    maxmemory-policy {{ .Values.redis.config.maxmemoryPolicy }}
+
+    # Persistence
+    save 900 1
+    save 300 10
+    save 60 10000
+
+    # AOF persistence
+    appendonly yes
+    appendfsync everysec
+    no-appendfsync-on-rewrite no
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+
+    # Logging
+    loglevel notice
+
+    # Network
+    tcp-keepalive 300
+    timeout 0
+
+    # Security
+    protected-mode yes
+
+    # Performance
+    tcp-backlog 511
+    databases 16
+
+    # Slow log
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+{{- end }}

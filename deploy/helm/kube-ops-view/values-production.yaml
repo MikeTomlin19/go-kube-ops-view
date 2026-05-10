@@ -1,0 +1,107 @@
+# Production values for kube-ops-view
+# This overrides the default values.yaml for production deployment
+
+# Image configuration for production
+image:
+  tag: "v1.0.0"  # Use specific version tag in production
+  pullPolicy: IfNotPresent
+
+# Deployment configuration for production
+deployment:
+  replicaCount: 3
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Resource configuration for production workloads
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Application configuration for production
+config:
+  server:
+    debug: false
+    secretKey: ""  # Set via external secret
+  logging:
+    level: "info"
+    format: "json"
+  clusters:
+    queryInterval: "5s"
+
+# Redis configuration for production
+redis:
+  enabled: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "fast-ssd"  # Use fast storage in production
+  config:
+    maxmemory: "200mb"
+    maxmemoryPolicy: "allkeys-lru"
+  password: ""  # Set via external secret
+
+# Enable Pod Disruption Budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Enable network policies for security
+networkPolicy:
+  enabled: true
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: "monitoring"
+    interval: 30s
+    scrapeTimeout: 10s
+
+# External secrets for production
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: "vault-secret-store"
+    kind: SecretStore
+  oauth:
+    enabled: true
+    remoteRef:
+      key: "kube-ops-view/oauth"
+      property: "client-secret"
+  app:
+    enabled: true
+    remoteRef:
+      key: "kube-ops-view/app"
+      property: "secret-key"
+
+# Ingress configuration for production
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+  - host: kube-ops-view.example.com
+    paths:
+    - path: /
+      pathType: Prefix
+  tls:
+  - secretName: kube-ops-view-tls
+    hosts:
+    - kube-ops-view.example.com

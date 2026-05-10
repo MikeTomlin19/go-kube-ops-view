@@ -1,0 +1,311 @@
+# Default values for kube-ops-view
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  # Image registry
+  imageRegistry: ""
+  # Image pull secrets
+  imagePullSecrets: []
+
+# Application configuration
+app:
+  # Application name override
+  nameOverride: ""
+  # Full name override
+  fullnameOverride: ""
+
+# Image configuration
+image:
+  registry: ""
+  repository: kube-ops-view
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Service account configuration
+serviceAccount:
+  # Create service account
+  create: true
+  # Service account name
+  name: ""
+  # Annotations for service account
+  annotations: {}
+
+# RBAC configuration
+rbac:
+  # Create RBAC resources
+  create: true
+  # Additional cluster role rules
+  additionalRules: []
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  capabilities:
+    drop:
+    - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# Deployment configuration
+deployment:
+  # Number of replicas
+  replicaCount: 2
+  # Deployment strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  # Pod annotations
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+  # Pod labels
+  podLabels: {}
+  # Node selector
+  nodeSelector:
+    kubernetes.io/os: linux
+  # Tolerations
+  tolerations:
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+  # Affinity
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - kube-ops-view
+            - key: app.kubernetes.io/component
+              operator: In
+              values:
+              - frontend
+          topologyKey: kubernetes.io/hostname
+  # Termination grace period
+  terminationGracePeriodSeconds: 30
+
+# Service configuration
+service:
+  # Service type
+  type: ClusterIP
+  # Service port
+  port: 80
+  # Target port
+  targetPort: http
+  # Service annotations
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+
+# Ingress configuration
+ingress:
+  # Enable ingress
+  enabled: false
+  # Ingress class name
+  className: ""
+  # Ingress annotations
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  # Ingress hosts
+  hosts:
+  - host: kube-ops-view.local
+    paths:
+    - path: /
+      pathType: Prefix
+  # TLS configuration
+  tls: []
+  #  - secretName: kube-ops-view-tls
+  #    hosts:
+  #      - kube-ops-view.local
+
+# Resource configuration
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Health check configuration
+healthCheck:
+  # Startup probe
+  startupProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    timeoutSeconds: 3
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 10
+  # Readiness probe
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    timeoutSeconds: 3
+    periodSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
+  # Liveness probe
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    timeoutSeconds: 10
+    periodSeconds: 30
+    successThreshold: 1
+    failureThreshold: 5
+
+# Application configuration
+config:
+  # Server configuration
+  server:
+    port: 8080
+    routePrefix: "/"
+    debug: false
+    secretKey: "change-me-in-production"
+
+  # Logging configuration
+  logging:
+    level: "info"
+    format: "json"
+    output: "stdout"
+    addSource: false
+    timeFormat: "rfc3339"
+
+  # Cluster configuration
+  clusters:
+    # List of cluster URLs (empty means use in-cluster config)
+    urls: []
+    # Cluster registry URL
+    registryUrl: ""
+    # Kubeconfig path for external clusters
+    kubeconfigPath: ""
+    # Kubeconfig contexts
+    contexts: []
+    # Query interval
+    queryInterval: "5s"
+    # Mock mode
+    mock: false
+
+  # UI configuration
+  ui:
+    # Node link URL template
+    nodeLinkUrlTemplate: ""
+    # Pod link URL template
+    podLinkUrlTemplate: ""
+
+  # OAuth configuration
+  oauth:
+    enabled: false
+    authorizeUrl: ""
+    tokenUrl: ""
+    clientId: ""
+    clientSecret: ""
+    scope: ""
+
+# Redis configuration
+redis:
+  # Enable Redis
+  enabled: true
+  # Redis image
+  image:
+    registry: ""
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  # Redis resources
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Redis persistence
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+    accessModes:
+    - ReadWriteOnce
+  # Redis configuration
+  config:
+    maxmemory: "200mb"
+    maxmemoryPolicy: "allkeys-lru"
+  # Redis password (leave empty for no auth)
+  password: ""
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  # Enable PDB
+  enabled: true
+  # Minimum available pods
+  minAvailable: 1
+
+# Network Policy
+networkPolicy:
+  # Enable network policy
+  enabled: false
+
+# Monitoring configuration
+monitoring:
+  # Enable Prometheus monitoring
+  enabled: false
+  # Service monitor configuration
+  serviceMonitor:
+    enabled: false
+    namespace: ""
+    labels: {}
+    annotations: {}
+    interval: 30s
+    scrapeTimeout: 10s
+
+# External secrets (for production)
+externalSecrets:
+  # Enable external secrets
+  enabled: false
+  # Secret store reference
+  secretStore:
+    name: ""
+    kind: SecretStore
+  # OAuth secret
+  oauth:
+    enabled: false
+    secretName: kube-ops-view-oauth
+    clientSecretKey: client-secret
+    remoteRef:
+      key: ""
+      property: ""
+  # Application secret
+  app:
+    enabled: false
+    secretName: kube-ops-view-secret
+    secretKeyKey: secret-key
+    remoteRef:
+      key: ""
+      property: ""

@@ -1,0 +1,239 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-ops-view
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+    app.kubernetes.io/version: go
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kube-ops-view
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kube-ops-view
+        app.kubernetes.io/component: frontend
+        app.kubernetes.io/part-of: kube-ops-view
+        app.kubernetes.io/version: go
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: kube-ops-view
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+      - name: kube-ops-view
+        image: kube-ops-view:latest
+        imagePullPolicy: IfNotPresent
+
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+
+        env:
+        # Load configuration from ConfigMap
+        - name: SERVER_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: SERVER_PORT
+        - name: ROUTE_PREFIX
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: ROUTE_PREFIX
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: DEBUG
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: LOG_LEVEL
+        - name: LOG_FORMAT
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: LOG_FORMAT
+        - name: QUERY_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: QUERY_INTERVAL
+
+        # Redis configuration
+        - name: REDIS_URL
+          value: "redis://kube-ops-view-redis:6379"
+        - name: REDIS_DB
+          valueFrom:
+            configMapKeyRef:
+              name: kube-ops-view-config
+              key: REDIS_DB
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-redis
+              key: password
+              optional: true
+
+        # Secret configuration
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-secret
+              key: secret-key
+
+        # OAuth configuration (optional)
+        - name: OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-oauth
+              key: client-secret
+              optional: true
+
+        # Cluster configuration - using in-cluster config by default
+        - name: CLUSTERS
+          value: "https://kubernetes.default.svc"
+
+        # Optional external link templates
+        # - name: NODE_LINK_URL_TEMPLATE
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: kube-ops-view-config
+        #       key: NODE_LINK_URL_TEMPLATE
+        #       optional: true
+        # - name: POD_LINK_URL_TEMPLATE
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: kube-ops-view-config
+        #       key: POD_LINK_URL_TEMPLATE
+        #       optional: true
+
+        # Health check probes
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          timeoutSeconds: 3
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
+          periodSeconds: 30
+          successThreshold: 1
+          failureThreshold: 5
+
+        # Resource limits and requests for production
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 200m
+            memory: 256Mi
+
+        # Security context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        # Volume mounts
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: kubeconfig
+          mountPath: /etc/kubeconfig
+          readOnly: true
+
+      volumes:
+      # Temporary directory for runtime files
+      - name: tmp
+        emptyDir:
+          sizeLimit: 100Mi
+
+      # Optional kubeconfig for external clusters
+      - name: kubeconfig
+        secret:
+          secretName: kube-ops-view-kubeconfig
+          optional: true
+
+      # Node selection and scheduling
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      # Tolerations for control plane nodes if needed
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+
+      # Pod disruption budget friendly settings
+      terminationGracePeriodSeconds: 30
+
+      # Anti-affinity to spread replicas across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kube-ops-view
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                  - frontend
+              topologyKey: kubernetes.io/hostname

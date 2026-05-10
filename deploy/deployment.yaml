@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    application: kube-ops-view
+    component: frontend
+    version: go
+  name: kube-ops-view-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      application: kube-ops-view
+      component: frontend
+      version: go
+  template:
+    metadata:
+      labels:
+        application: kube-ops-view
+        component: frontend
+        version: go
+    spec:
+      serviceAccountName: kube-ops-view
+      containers:
+      - name: service
+        # Update this to your registry/image when building
+        image: kube-ops-view:latest
+        imagePullPolicy: IfNotPresent
+        args:
+        # Server configuration
+        - --port=8080
+        - --debug=false
+        - --log-level=info
+        - --log-format=json
+
+        # Redis configuration for multi-replica support
+        - --redis-url=redis://kube-ops-view-redis:6379
+
+        # Cluster configuration
+        # Uncomment and modify as needed:
+        # - --clusters=https://kubernetes.default.svc
+        # - --kubeconfig-path=/etc/kubeconfig/config
+        # - --query-interval=5s
+
+        # Authentication (uncomment if using OAuth)
+        # - --oauth-authorize-url=https://your-oauth-provider/auth
+        # - --oauth-token-url=https://your-oauth-provider/token
+        # - --oauth-client-id=your-client-id
+
+        # External links (uncomment and modify as needed)
+        # - --node-link-url-template=https://kube-web-view.example.org/clusters/{cluster}/nodes/{name}
+        # - --pod-link-url-template=https://kube-web-view.example.org/clusters/{cluster}/namespaces/{namespace}/pods/{name}
+
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+
+        env:
+        # Environment variables for configuration
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-secret
+              key: secret-key
+              optional: true
+
+        # OAuth credentials (if using)
+        - name: OAUTH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-oauth
+              key: client-secret
+              optional: true
+
+        # Redis password (if using)
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kube-ops-view-redis
+              key: password
+              optional: true
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          timeoutSeconds: 3
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 5
+
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          timeoutSeconds: 3
+          periodSeconds: 5
+          successThreshold: 1
+          failureThreshold: 10
+
+        resources:
+          limits:
+            cpu: 500m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+
+        volumeMounts:
+        # Mount kubeconfig if needed for external clusters
+        - name: kubeconfig
+          mountPath: /etc/kubeconfig
+          readOnly: true
+        # Temporary directory for any runtime files
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      # Kubeconfig volume (optional, for external clusters)
+      - name: kubeconfig
+        secret:
+          secretName: kube-ops-view-kubeconfig
+          optional: true
+      # Temporary volume for runtime files
+      - name: tmp
+        emptyDir: {}
+
+      # Security context for the pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Node selection and scheduling
+      nodeSelector:
+        kubernetes.io/os: linux
+
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+
+      # Restart policy
+      restartPolicy: Always
+
+      # Termination grace period for graceful shutdown
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,91 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test files
+*_test.go
+tests/
+coverage.out
+coverage.html
+
+# Build artifacts
+kube-ops-view
+.cache/
+artifacts/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python files (from original project)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+poetry.lock
+pyproject.toml
+kube_ops_view/
+
+# Node modules (will be handled in multi-stage build)
+app/node_modules/
+app/build/
+
+# Docker files
+Dockerfile
+docker-compose*.yml
+
+# CI/CD files
+.travis.yml
+.github/
+
+# Kubernetes manifests (not needed in container)
+deploy/
+openshift/
+examples/
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local

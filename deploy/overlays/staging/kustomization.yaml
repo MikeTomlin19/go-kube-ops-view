@@ -1,0 +1,69 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kube-ops-view-staging
+
+# Base configuration
+bases:
+- ../../production
+
+# Namespace override
+namespace: kube-ops-view-staging
+
+# Environment-specific labels
+commonLabels:
+  environment: staging
+
+# Environment-specific annotations
+commonAnnotations:
+  kube-ops-view.io/environment: staging
+
+# Patches for staging environment
+patches:
+# Staging replicas (between dev and prod)
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 2
+
+# Staging resource limits
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        limits:
+          cpu: 750m
+          memory: 384Mi
+        requests:
+          cpu: 150m
+          memory: 192Mi
+
+# Staging PVC size
+- target:
+    kind: PersistentVolumeClaim
+    name: kube-ops-view-redis-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: 2Gi
+
+# Images for staging
+images:
+- name: kube-ops-view
+  newTag: staging
+- name: redis
+  newTag: 7-alpine
+
+# Replicas for staging
+replicas:
+- name: kube-ops-view
+  count: 2
+- name: kube-ops-view-redis
+  count: 1

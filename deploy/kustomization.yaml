@@ -1,0 +1,81 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kube-ops-view-go
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: kube-ops-view
+  app.kubernetes.io/component: frontend
+  app.kubernetes.io/version: go
+  app.kubernetes.io/part-of: kube-ops-view
+
+# Resources to include
+resources:
+- rbac.yaml
+- service.yaml
+- deployment-go.yaml
+- redis-deployment.yaml
+- redis-service.yaml
+
+# ConfigMap generator for application configuration
+configMapGenerator:
+- name: kube-ops-view-config
+  literals:
+  - LOG_LEVEL=info
+  - LOG_FORMAT=json
+  - QUERY_INTERVAL=5s
+  - DEBUG=false
+
+# Secret generator for sensitive configuration
+secretGenerator:
+- name: kube-ops-view-secret
+  literals:
+  - secret-key=change-me-in-production
+  type: Opaque
+
+# Images to update
+images:
+- name: kube-ops-view
+  newTag: latest
+- name: redis
+  newTag: 7-alpine
+
+# Namespace for all resources
+namespace: kube-ops-view
+
+# Patches for customization
+patches:
+# Patch to add environment variables from ConfigMap
+- target:
+    kind: Deployment
+    name: kube-ops-view-go
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/envFrom
+      value:
+      - configMapRef:
+          name: kube-ops-view-config
+
+# Patch to add resource limits based on environment
+- target:
+    kind: Deployment
+    name: kube-ops-view-go
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+# Replicas configuration
+replicas:
+- name: kube-ops-view-go
+  count: 1
+- name: kube-ops-view-redis
+  count: 1

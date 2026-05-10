@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kube-ops-view-config
+  namespace: kube-ops-view
+  labels:
+    app.kubernetes.io/name: kube-ops-view
+    app.kubernetes.io/component: frontend
+    app.kubernetes.io/part-of: kube-ops-view
+data:
+  # Server configuration
+  SERVER_PORT: "8080"
+  ROUTE_PREFIX: "/"
+  DEBUG: "false"
+
+  # Logging configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  LOG_OUTPUT: "stdout"
+  LOG_ADD_SOURCE: "false"
+  LOG_TIME_FORMAT: "rfc3339"
+
+  # Cluster configuration
+  QUERY_INTERVAL: "5s"
+  MOCK: "false"
+
+  # Redis configuration (connection details)
+  REDIS_DB: "0"
+
+  # UI configuration (examples - uncomment and modify as needed)
+  # NODE_LINK_URL_TEMPLATE: "https://kube-web-view.example.org/clusters/{cluster}/nodes/{name}"
+  # POD_LINK_URL_TEMPLATE: "https://kube-web-view.example.org/clusters/{cluster}/namespaces/{namespace}/pods/{name}"

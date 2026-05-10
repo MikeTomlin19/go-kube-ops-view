@@ -1,0 +1,89 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+rules:
+# Core resources for cluster visualization
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch"]
+
+# Metrics API access for resource usage
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+
+# Optional: Custom metrics (if using custom metrics API)
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+
+# Optional: External metrics (if using external metrics API)
+- apiGroups: ["external.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+
+{{- with .Values.rbac.additionalRules }}
+# Additional rules
+{{- toYaml . | nindent 0 }}
+{{- end }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "kube-ops-view.fullname" . }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "kube-ops-view.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+
+---
+# Role for accessing secrets in the same namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+  - {{ include "kube-ops-view.fullname" . }}-oauth
+  - {{ include "kube-ops-view.fullname" . }}-secret
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "kube-ops-view.fullname" . }}-secrets
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-ops-view.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "kube-ops-view.fullname" . }}-secrets
+subjects:
+- kind: ServiceAccount
+  name: {{ include "kube-ops-view.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+{{- end }}

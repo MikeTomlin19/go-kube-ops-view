@@ -1,0 +1,19 @@
+apiVersion: v2
+name: kube-ops-view
+description: A Helm chart for Kube Ops View - Visual dashboard for multiple Kubernetes clusters
+type: application
+version: 1.0.0
+appVersion: "latest"
+home: https://github.com/MikeTomlin19/go-kube-ops-view
+sources:
+- https://github.com/MikeTomlin19/go-kube-ops-view
+maintainers:
+- name: MikeTomlin19
+keywords:
+- kubernetes
+- monitoring
+- dashboard
+- visualization
+- ops
+annotations:
+  category: Monitoring

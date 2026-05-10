@@ -1,0 +1,104 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: kube-ops-view-production
+
+# Namespace for all resources
+namespace: kube-ops-view
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: kube-ops-view
+  app.kubernetes.io/part-of: kube-ops-view
+  environment: production
+
+# Common annotations
+commonAnnotations:
+  kube-ops-view.io/managed-by: kustomize
+  kube-ops-view.io/environment: production
+
+# Resources to include
+resources:
+- namespace.yaml
+- rbac.yaml
+- configmap.yaml
+- secret.yaml
+- deployment.yaml
+- service.yaml
+- redis-deployment.yaml
+- redis-service.yaml
+- redis-pvc.yaml
+- poddisruptionbudget.yaml
+- networkpolicy.yaml
+
+# Images to update
+images:
+- name: kube-ops-view
+  newTag: latest
+- name: redis
+  newTag: 7-alpine
+
+# ConfigMap generator for additional configuration
+configMapGenerator:
+- name: kube-ops-view-redis-config
+  files:
+  - redis.conf
+  behavior: create
+
+# Patches for production-specific configuration
+patches:
+# Increase replicas for production
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/replicas
+      value: 3
+
+# Production resource limits
+- target:
+    kind: Deployment
+    name: kube-ops-view
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        limits:
+          cpu: 1000m
+          memory: 512Mi
+        requests:
+          cpu: 200m
+          memory: 256Mi
+
+# Redis production resources
+- target:
+    kind: Deployment
+    name: kube-ops-view-redis
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/resources
+      value:
+        limits:
+          cpu: 500m
+          memory: 256Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+# Production PVC size
+- target:
+    kind: PersistentVolumeClaim
+    name: kube-ops-view-redis-data
+  patch: |-
+    - op: replace
+      path: /spec/resources/requests/storage
+      value: 5Gi
+
+# Replicas configuration
+replicas:
+- name: kube-ops-view
+  count: 3
+- name: kube-ops-view-redis
+  count: 1
