@@ -152,22 +152,28 @@ export default class App {
         })
     }
 
-    initialize() {
+    async initialize() {
         App.current = this
 
         // create the renderer
-        const noWebGL = this.config.renderer === 'canvas'
-        const renderer = PIXI.autoDetectRenderer(256, 256, {resolution: 2}, noWebGL)
-        renderer.view.style.display = 'block'
-        renderer.autoResize = true
-        renderer.resize(window.innerWidth, window.innerHeight)
+        const rendererOpts = {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            resolution: 2,
+            autoDensity: true,
+        }
+        if (this.config.renderer === 'canvas') {
+            rendererOpts.preference = 'canvas'
+        }
+        const renderer = await PIXI.autoDetectRenderer(rendererOpts)
+        renderer.canvas.style.display = 'block'
 
         window.onresize = function () {
             renderer.resize(window.innerWidth, window.innerHeight)
         }
 
         //Add the canvas to the HTML document
-        document.body.appendChild(renderer.view)
+        document.body.appendChild(renderer.canvas)
         this.renderer = renderer
 
         //Create a container object called the `stage`
@@ -228,7 +234,7 @@ export default class App {
                 prevX = event.clientX
                 prevY = event.clientY
                 isDragging = true
-                this.renderer.view.style.cursor = 'move'
+                this.renderer.canvas.style.cursor = 'move'
             }
         }
 
@@ -250,7 +256,7 @@ export default class App {
 
         function mouseUpHandler(_event) {
             isDragging = false
-            this.renderer.view.style.cursor = 'default'
+            this.renderer.canvas.style.cursor = 'default'
         }
 
         function touchStartHandler(event) {
@@ -321,7 +327,7 @@ export default class App {
             that.viewContainerTargetPosition.y = that.viewContainer.y
         }
 
-        addWheelListener(this.renderer.view, function (e) {
+        addWheelListener(this.renderer.canvas, function (e) {
             zoom(e.clientX, e.clientY, e.deltaY < 0)
         })
     }
@@ -411,7 +417,7 @@ export default class App {
     animatePodCreation(originalPod, globalPosition) {
         const pod = new Pod(originalPod.pod, null, this.tooltip)
         pod.draw()
-        pod.blendMode = PIXI.BLEND_MODES.ADD
+        pod.blendMode = 'add'
         pod.eventMode = 'none'
         const targetPosition = globalPosition
         const angle = Math.random() * Math.PI * 2
@@ -452,7 +458,7 @@ export default class App {
     animatePodDeletion(originalPod, globalPosition) {
         const pod = new Pod(originalPod.pod, null, this.tooltip)
         pod.draw()
-        pod.blendMode = PIXI.BLEND_MODES.ADD
+        pod.blendMode = 'add'
         const globalCenter = new PIXI.Point(globalPosition.x + pod.width / 2, globalPosition.y + pod.height / 2)
         const blur = new PIXI.BlurFilter(4)
         pod.filters = [blur]
@@ -725,10 +731,10 @@ export default class App {
     }
 
     run() {
-        this.initialize()
-        this.draw()
-        this.connect()
-
-        PIXI.Ticker.shared.add(this.tick, this)
+        this.initialize().then(() => {
+            this.draw()
+            this.connect()
+            PIXI.Ticker.shared.add(this.tick, this)
+        })
     }
 }

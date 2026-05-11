@@ -294,7 +294,7 @@ export class Pod extends PIXI.Graphics {
                 cross.pivot.y = 5
                 cross.x = 5
                 cross.y = 5
-                cross.blendMode = PIXI.BLEND_MODES.ADD
+                cross.blendMode = 'add'
                 this.addChild(cross)
                 this.cross = cross
             }
