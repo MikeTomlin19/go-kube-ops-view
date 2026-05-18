@@ -107,6 +107,10 @@ deployment:
           topologyKey: kubernetes.io/hostname
   # Termination grace period
   terminationGracePeriodSeconds: 30
+  # Extra environment variables to add to the container (list of EnvVar)
+  extraEnv: []
+  #  - name: GIN_MODE
+  #    value: release
 
 # Service configuration
 service:
@@ -158,6 +162,7 @@ healthCheck:
   # Startup probe
   startupProbe:
     enabled: true
+    path: /health
     initialDelaySeconds: 10
     timeoutSeconds: 3
     periodSeconds: 5
@@ -166,6 +171,7 @@ healthCheck:
   # Readiness probe
   readinessProbe:
     enabled: true
+    path: /health
     initialDelaySeconds: 5
     timeoutSeconds: 3
     periodSeconds: 10
@@ -174,6 +180,7 @@ healthCheck:
   # Liveness probe
   livenessProbe:
     enabled: true
+    path: /health
     initialDelaySeconds: 30
     timeoutSeconds: 10
     periodSeconds: 30
