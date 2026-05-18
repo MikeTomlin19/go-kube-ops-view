@@ -22,13 +22,10 @@ metadata:
 rules:
 # Core resources for cluster visualization
 - apiGroups: [""]
-  resources: ["nodes"]
+  resources: ["nodes", "pods", "namespaces", "services", "resourcequotas"]
   verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["pods"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["namespaces"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
   verbs: ["get", "list", "watch"]
 
 # Metrics API access for resource usage
