@@ -114,10 +114,14 @@ spec:
           value: "https://kubernetes.default.svc"
         {{- end }}
 
+        {{- with .Values.deployment.extraEnv }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+
         {{- if .Values.healthCheck.startupProbe.enabled }}
         startupProbe:
           httpGet:
-            path: /health
+            path: {{ .Values.healthCheck.startupProbe.path }}
             port: http
           initialDelaySeconds: {{ .Values.healthCheck.startupProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.healthCheck.startupProbe.timeoutSeconds }}
@@ -129,7 +133,7 @@ spec:
         {{- if .Values.healthCheck.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
-            path: /health
+            path: {{ .Values.healthCheck.readinessProbe.path }}
             port: http
           initialDelaySeconds: {{ .Values.healthCheck.readinessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.healthCheck.readinessProbe.timeoutSeconds }}
@@ -141,7 +145,7 @@ spec:
         {{- if .Values.healthCheck.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
-            path: /health
+            path: {{ .Values.healthCheck.livenessProbe.path }}
             port: http
           initialDelaySeconds: {{ .Values.healthCheck.livenessProbe.initialDelaySeconds }}
           timeoutSeconds: {{ .Values.healthCheck.livenessProbe.timeoutSeconds }}

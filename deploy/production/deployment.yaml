@@ -42,7 +42,7 @@ spec:
 
       containers:
       - name: kube-ops-view
-        image: go-kube-ops-view:latest
+        image: ghcr.io/miketomlin19/go-kube-ops-view:0.1.0
         imagePullPolicy: IfNotPresent
 
         ports:
@@ -51,6 +51,8 @@ spec:
           protocol: TCP
 
         env:
+        - name: GIN_MODE
+          value: release
         # Load configuration from ConfigMap
         - name: SERVER_PORT
           valueFrom:
@@ -134,7 +136,7 @@ spec:
         # Health check probes
         startupProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: http
           initialDelaySeconds: 10
           timeoutSeconds: 3
@@ -144,7 +146,7 @@ spec:
 
         readinessProbe:
           httpGet:
-            path: /health
+            path: /readyz
             port: http
           initialDelaySeconds: 5
           timeoutSeconds: 3
@@ -154,7 +156,7 @@ spec:
 
         livenessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: http
           initialDelaySeconds: 30
           timeoutSeconds: 10

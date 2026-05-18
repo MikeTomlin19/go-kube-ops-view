@@ -10,14 +10,14 @@ metadata:
   name: kube-ops-view
 rules:
 - apiGroups: [""]
-  resources: ["nodes", "pods"]
-  verbs:
-    - list
+  resources: ["nodes", "pods", "namespaces", "services", "resourcequotas"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: ["metrics.k8s.io"]
   resources: ["nodes", "pods"]
-  verbs:
-    - get
-    - list
+  verbs: ["get", "list"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
