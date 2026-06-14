@@ -52,7 +52,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     ./main.go
 
 # Stage 3: Final runtime image
-FROM alpine:3.23
+FROM alpine:3.24
 
 # Install runtime dependencies
 RUN apk --no-cache add ca-certificates tzdata && \
